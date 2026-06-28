@@ -43,19 +43,19 @@ C -->|"{text_id, sh_attribution, sh_confidence_score}"| D
 D -->|"{text_id, llm_attribution, llm_confidence_score,
 sh_attribution, sh_confidence_score}"| E
 
-E -->|"{text_id, raw_text, attribution,
-llm_confidence_score,
-sh_confidence_score,
-combined_avg_confidence_score,
-label_details,
-status}"| F
-
-F -->|"{text_id, attribution,
+E -->|"{text_id, attribution,
 llm_attribution,
 llm_confidence_score,
 sh_attribution,
 sh_confidence_score,
 combined_avg_confidence_score,
+status}"| F
+
+F -->|"{text_id, raw_text, attribution,
+llm_confidence_score,
+sh_confidence_score,
+combined_avg_confidence_score,
+label_details,
 status}"| G
 
 end
