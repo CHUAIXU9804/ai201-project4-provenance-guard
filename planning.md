@@ -16,8 +16,9 @@ What types of content will your system handle poorly? Name at least two specific
 
 
 ## Architecture
+
 ```mermaid
-flowchart LR
+flowchart TD
 
 subgraph Submission_Flow["Submission Flow"]
 
@@ -36,36 +37,54 @@ F["Audit Log"]
 G["API Response"]
 
 A -->|"{text_id, raw_text}"| B
+B -->|"{text_id, llm_attribution, llm_confidence_score}"| C
+C -->|"{text_id, sh_attribution, sh_confidence_score}"| D
 
-B -->|"{text_id, llm_attribution,<br/>llm_confidence_score}"| C
+D -->|"{text_id, llm_attribution, llm_confidence_score,
+sh_attribution, sh_confidence_score}"| E
 
-C -->|"{text_id, sh_attribution,<br/>sh_confidence_score}"| D
+E -->|"{text_id, raw_text, attribution,
+llm_confidence_score,
+sh_confidence_score,
+combined_avg_confidence_score,
+label_details,
+status}"| F
 
-D -->|"{text_id,<br/>llm_attribution,<br/>llm_confidence_score,<br/>sh_attribution,<br/>sh_confidence_score}"| E
-
-E -->|"{text_id, raw_text,<br/>attribution,<br/>llm_confidence_score,<br/>sh_confidence_score,<br/>combined_avg_confidence_score,<br/>label_details,<br/>status}"| F
-
-F -->|"{text_id,<br/>attribution,<br/>llm_attribution,<br/>llm_confidence_score,<br/>sh_attribution,<br/>sh_confidence_score,<br/>combined_avg_confidence_score,<br/>status}"| G
+F -->|"{text_id, attribution,
+llm_attribution,
+llm_confidence_score,
+sh_attribution,
+sh_confidence_score,
+combined_avg_confidence_score,
+status}"| G
 
 end
 
-G -. "Creator chooses to appeal" .-> H
+G --> H{"Creator reviews result"}
+
+H -->|No| I["End"]
+
+H -->|Yes| J["POST /appeal"]
 
 subgraph Appeal_Flow["Appeal Flow"]
 
-H["POST /appeal"]
+J -->|"{text_id,
+appeal_classification,
+appeal_reason}"| K["Status Update"]
 
-I["Status Update"]
+K -->|"{text_id,
+status = under_review}"| L["Audit Log"]
 
-J["Audit Log"]
-
-K["API Response"]
-
-H -->|"{text_id,<br/>appeal_classification,<br/>appeal_reason}"| I
-
-I -->|"{text_id,<br/>original_attribution,<br/>status = under_review}"| J
-
-J -->|"{text_id,<br/>original_attribution,<br/>llm_attribution,<br/>llm_confidence_score,<br/>sh_attribution,<br/>sh_confidence_score,<br/>combined_avg_confidence_score,<br/>label_details,<br/>appeal_classification,<br/>status}"| K
+L -->|"{text_id,
+original_attribution,
+llm_attribution,
+llm_confidence_score,
+sh_attribution,
+sh_confidence_score,
+combined_avg_confidence_score,
+label_details,
+appeal_classification,
+status}"| M["API Response"]
 
 end
 ```
