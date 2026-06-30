@@ -3,7 +3,7 @@ import re
 import json
 import uuid
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
@@ -270,7 +270,7 @@ def generate_label(combined_score):
 # ---------------------------------------------------------------------------
 @app.route("/")
 def home():
-    return "Provenance Guard is running."
+    return render_template("index.html")
 
 
 @app.route("/log", methods=["GET"])

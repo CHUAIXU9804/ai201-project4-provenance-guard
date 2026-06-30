@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Provenance Guard</title>
+  <style>
+    :root {
+      --bg: #f5f6f8; --card: #ffffff; --border: #e1e4e8; --text: #24292e;
+      --muted: #6a737d; --accent: #0366d6;
+      --ai: #b31d28; --ai-bg: #ffeef0;
+      --human: #176f2c; --human-bg: #e6ffed;
+      --uncertain: #b08800; --uncertain-bg: #fff8e1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg); color: var(--text); margin: 0; padding: 2rem 1rem;
+      line-height: 1.5;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; }
+    h1 { font-size: 1.6rem; margin: 0 0 0.25rem; }
+    .sub { color: var(--muted); margin: 0 0 1.5rem; }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 1.25rem 1.5rem; margin-bottom: 1.25rem;
+    }
+    label { display: block; font-weight: 600; margin: 0.75rem 0 0.35rem; font-size: 0.9rem; }
+    textarea, input, select {
+      width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.95rem; font-family: inherit; background: #fff;
+    }
+    textarea { resize: vertical; min-height: 120px; }
+    button {
+      margin-top: 1rem; background: var(--accent); color: #fff; border: none;
+      padding: 0.6rem 1.2rem; border-radius: 6px; font-size: 0.95rem; cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { background: #0256b9; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .hidden { display: none; }
+    .badge {
+      display: inline-block; padding: 0.35rem 0.8rem; border-radius: 999px;
+      font-weight: 700; font-size: 0.95rem;
+    }
+    .badge.likely_ai { color: var(--ai); background: var(--ai-bg); }
+    .badge.likely_human { color: var(--human); background: var(--human-bg); }
+    .badge.uncertain { color: var(--uncertain); background: var(--uncertain-bg); }
+    .label-text { margin: 0.9rem 0; }
+    .meter { background: #eaecef; border-radius: 999px; height: 12px; overflow: hidden; margin: 0.3rem 0 0.2rem; }
+    .meter > span { display: block; height: 100%; background: var(--accent); }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.9rem; }
+    th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; }
+    .meta { color: var(--muted); font-size: 0.82rem; margin-top: 0.75rem; word-break: break-all; }
+    .error { color: var(--ai); background: var(--ai-bg); padding: 0.6rem 0.8rem; border-radius: 6px; }
+    .ok { color: var(--human); background: var(--human-bg); padding: 0.6rem 0.8rem; border-radius: 6px; }
+    h2 { font-size: 1.1rem; margin: 0 0 0.5rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Provenance Guard</h1>
+    <p class="sub">Submit text to check whether it reads as AI-generated or human-written.</p>
+
+    <!-- Submission -->
+    <div class="card">
+      <h2>Submit text</h2>
+      <label for="text">Your text</label>
+      <textarea id="text" placeholder="Paste the text you want to check..."></textarea>
+      <label for="creator_id">Creator ID</label>
+      <input id="creator_id" value="web-user" />
+      <button id="submitBtn" onclick="submitText()">Analyze</button>
+      <div id="submitError" class="error hidden" style="margin-top:1rem;"></div>
+    </div>
+
+    <!-- Result -->
+    <div id="result" class="card hidden">
+      <h2>Result</h2>
+      <span id="labelBadge" class="badge"></span>
+      <p id="labelText" class="label-text"></p>
+
+      <label>Combined confidence score</label>
+      <div class="meter"><span id="confBar"></span></div>
+      <div id="confValue" class="meta"></div>
+
+      <table>
+        <thead><tr><th>Signal</th><th>Attribution</th><th>Score</th></tr></thead>
+        <tbody>
+          <tr><td>LLM classification (Groq)</td><td id="llmAttr"></td><td id="llmScore"></td></tr>
+          <tr><td>Stylometric heuristics</td><td id="shAttr"></td><td id="shScore"></td></tr>
+          <tr><td><strong>Combined</strong></td><td id="combAttr"></td><td id="combScore"></td></tr>
+        </tbody>
+      </table>
+
+      <div class="meta">Content ID: <span id="contentId"></span></div>
+      <div class="meta">Status: <span id="status"></span></div>
+    </div>
+
+    <!-- Appeal -->
+    <div id="appeal" class="card hidden">
+      <h2>Disagree with this result? Submit an appeal</h2>
+      <label for="appeal_classification">Classification you believe is correct</label>
+      <select id="appeal_classification">
+        <option value="Likely Human">Likely Human</option>
+        <option value="Likely AI">Likely AI</option>
+        <option value="Uncertain">Uncertain</option>
+      </select>
+      <label for="creator_reasoning">Why do you believe the result is incorrect?</label>
+      <textarea id="creator_reasoning" placeholder="Explain your reasoning..."></textarea>
+      <button id="appealBtn" onclick="submitAppeal()">Submit appeal</button>
+      <div id="appealMsg" class="ok hidden" style="margin-top:1rem;"></div>
+      <div id="appealError" class="error hidden" style="margin-top:1rem;"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentContentId = null;
+
+    // Render planning.md's **bold** markers as <strong>.
+    function renderBold(text) {
+      const safe = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    }
+
+    function show(id) { document.getElementById(id).classList.remove("hidden"); }
+    function hide(id) { document.getElementById(id).classList.add("hidden"); }
+
+    // Mirror the server's threshold map (planning.md uncertainty representation).
+    function scoreToAttr(score) {
+      if (score >= 0.75) return "likely_ai";
+      if (score >= 0.40) return "uncertain";
+      return "likely_human";
+    }
+
+    async function submitText() {
+      const text = document.getElementById("text").value.trim();
+      const creator_id = document.getElementById("creator_id").value.trim();
+      const btn = document.getElementById("submitBtn");
+      hide("submitError");
+
+      if (!text || !creator_id) {
+        document.getElementById("submitError").textContent = "Both text and creator ID are required.";
+        show("submitError");
+        return;
+      }
+
+      btn.disabled = true; btn.textContent = "Analyzing...";
+      try {
+        const res = await fetch("/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, creator_id }),
+        });
+
+        if (res.status === 429) {
+          document.getElementById("submitError").textContent =
+            "Rate limit reached — too many submissions. Please wait a minute and try again.";
+          show("submitError");
+          return;
+        }
+        const data = await res.json();
+        if (!res.ok) {
+          document.getElementById("submitError").textContent = data.error || "Submission failed.";
+          show("submitError");
+          return;
+        }
+
+        renderResult(data);
+      } catch (e) {
+        document.getElementById("submitError").textContent = "Network error: " + e.message;
+        show("submitError");
+      } finally {
+        btn.disabled = false; btn.textContent = "Analyze";
+      }
+    }
+
+    function renderResult(data) {
+      currentContentId = data.content_id;
+
+      const badge = document.getElementById("labelBadge");
+      badge.textContent = data.label_variant;
+      badge.className = "badge " + data.attribution;
+
+      document.getElementById("labelText").innerHTML = renderBold(data.label_text);
+
+      const pct = Math.round(data.confidence * 100);
+      document.getElementById("confBar").style.width = pct + "%";
+      document.getElementById("confValue").textContent =
+        data.confidence.toFixed(2) + " (" + pct + "% likely AI-generated)";
+
+      document.getElementById("llmAttr").textContent = scoreToAttr(data.llm_confidence_score);
+      document.getElementById("llmScore").textContent = data.llm_confidence_score.toFixed(2);
+      document.getElementById("shAttr").textContent = scoreToAttr(data.sh_confidence_score);
+      document.getElementById("shScore").textContent = data.sh_confidence_score.toFixed(2);
+      document.getElementById("combScore").textContent = data.confidence.toFixed(2);
+      document.getElementById("combAttr").textContent = data.attribution;
+
+      document.getElementById("contentId").textContent = data.content_id;
+      document.getElementById("status").textContent = data.status;
+
+      show("result");
+      show("appeal");
+      // reset appeal panel
+      hide("appealMsg"); hide("appealError");
+      document.getElementById("creator_reasoning").value = "";
+    }
+
+    async function submitAppeal() {
+      const creator_reasoning = document.getElementById("creator_reasoning").value.trim();
+      const appeal_classification = document.getElementById("appeal_classification").value;
+      const btn = document.getElementById("appealBtn");
+      hide("appealMsg"); hide("appealError");
+
+      if (!currentContentId) {
+        document.getElementById("appealError").textContent = "Submit text first to get a content ID.";
+        show("appealError");
+        return;
+      }
+      if (!creator_reasoning) {
+        document.getElementById("appealError").textContent = "Please provide your reasoning.";
+        show("appealError");
+        return;
+      }
+
+      btn.disabled = true; btn.textContent = "Submitting...";
+      try {
+        const res = await fetch("/appeal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content_id: currentContentId,
+            appeal_classification,
+            creator_reasoning,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          document.getElementById("appealError").textContent = data.error || "Appeal failed.";
+          show("appealError");
+          return;
+        }
+        document.getElementById("appealMsg").textContent =
+          data.message + " (status: " + data.status + ")";
+        show("appealMsg");
+        document.getElementById("status").textContent = data.status;
+      } catch (e) {
+        document.getElementById("appealError").textContent = "Network error: " + e.message;
+        show("appealError");
+      } finally {
+        btn.disabled = false; btn.textContent = "Submit appeal";
+      }
+    }
+  </script>
+</body>
+</html>
