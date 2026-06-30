@@ -70,3 +70,37 @@
   }
 ]
 ```
+
+
+## Architecture overview
+the path a submission takes from input to transparency label
+
+
+## Detection signals
+what each signal measures, why you chose it, and what it misses
+
+
+## Confidence scoring
+why this scoring approach, what you'd change if you were deploying this for real.
+How I combined signals into a score, how you validated it's meaningful, and two example submissions with noticeably different confidence scores (one high-confidence, one lower-confidence) showing the actual scores
+
+
+
+## Transparency label
+typed description of all three variants (high-confidence AI, human, uncertain) showing the exact text each one displays; screenshot or mockup optional
+Include a typed description of all three variants (high-confidence AI, high-confidence human, uncertain) — write out the exact text each one displays. You're welcome to include a screenshot or mockup as well, but the written description is what's required.
+
+
+## Rate limiting
+the limits you chose and your reasoning for those specific values. Name at least one specific type of content your system would likely get wrong and explain why — tied to a property of your signals, not a generic "it needs more data."
+
+## Known limitations
+at least one specific type of content your system would likely misclassify and why
+
+
+## Spec reflection
+one way the spec helped you, one way implementation diverged from it and why
+
+
+## AI usage section
+At least 2 specific instances describing what you directed the AI to do and what you revised or overrode
